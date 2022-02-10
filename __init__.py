@@ -1,5 +1,8 @@
+import re
 from copy import deepcopy
 from functools import partial
+
+import torch
 from torch import nn
 
 
@@ -9,8 +12,17 @@ def _normalize_output(mod, outp):
     return outp
 
 
-def inject_hooks(model, intervene_fn, submodules=(), clone=True,
-                 clear_prev_hooks=False, pass_idx=False, pass_submodule=False):
+def inject_hooks(model, intervene_fn, submodules=None, match_string=None, clone=True,
+                 clear_prev_hooks=False, pass_idx=False, pass_submodule=False, verbose=False):
+    assert (submodules is None) ^ (match_string is None)
+    if submodules is None:
+        assert isinstance(match_string, (str, list, tuple))
+        if isinstance(match_string, str):
+            match_string = [match_string]
+        patterns = ['.*'.join(map(re.escape, raw_pattern.split('*'))) for raw_pattern in match_string]
+        submodules = [name for name, _ in model.named_modules()
+                      if any(re.search(pattern, name) for pattern in patterns)]
+
     if clone:
         model = deepcopy(model)
 
@@ -23,11 +35,21 @@ def inject_hooks(model, intervene_fn, submodules=(), clone=True,
 
     my_hooks = model.my_hooks
     for i, submodule_path in enumerate(submodules):
+        if verbose:
+            print(f"injection to submodule: {submodule_path}")
         if pass_idx:
             intervene_fn = partial(intervene_fn, idx=i)
         if pass_submodule:
             intervene_fn = partial(intervene_fn, submodule=submodule_path)
-        my_hooks.append(model.get_submodule(submodule_path).register_forward_hook(intervene_fn))
+
+        def _inner_fn(mod, inp, out_, *args, **kwargs):
+            out = _normalize_output(mod, out_)
+            new_out = intervene_fn(*out, *args, **kwargs)
+            if new_out is not None:
+                assert isinstance(new_out, torch.Tensor)  # TODO: supports only one output
+                out[0] = 0 * out[0] + new_out  # we cannot use set, because it is non-differentiable
+
+        my_hooks.append(model.get_submodule(submodule_path).register_forward_hook(_inner_fn))
     if clone:
         return model
 
