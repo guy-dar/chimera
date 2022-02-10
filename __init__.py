@@ -47,7 +47,9 @@ def inject_hooks(model, intervene_fn, submodules=None, match_string=None, clone=
             new_out = intervene_fn(*out, *args, **kwargs)
             if new_out is not None:
                 assert isinstance(new_out, torch.Tensor)  # TODO: supports only one output
-                out[0] = 0 * out[0] + new_out  # we cannot use set, because it is non-differentiable
+                first_arg = out[0]
+                first_arg *= 0
+                first_arg += new_out  # we cannot use set, because it is non-differentiable
 
         my_hooks.append(model.get_submodule(submodule_path).register_forward_hook(_inner_fn))
     if clone:
