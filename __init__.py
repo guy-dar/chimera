@@ -72,15 +72,15 @@ def extract_intermediate_layer(model, submodule_path):
     class _IntermediateLayer(nn.Module):
         def __init__(self):
             super().__init__()
-            self.model = deepcopy(model)
-            self.registered = []
+            self._model = deepcopy(model)
+            self._registered = None
             self.model.get_submodule(submodule_path).register_forward_hook(self._register)
 
         def _register(self, mod, inp, out_):
-            self.registered.append(_normalize_output(out_))
+            self._registered = _normalize_output(out_)
 
         def forward(self, *args, **kwargs):
-            self.model(*args, **kwargs)
+            self._model(*args, **kwargs)
             return self._registered
 
-    return _IntermediateLayer
+    return _IntermediateLayer()
