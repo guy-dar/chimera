@@ -66,7 +66,8 @@ def combine_models(base_model, injected_model, freeze_base=False, freeze_injecte
     return new_model
 
 
-def get_intermediate_layer(model, submodule_path):
+def extract_intermediate_layer(model, submodule_path):
+    # TODO: find better way (perhaps using torch fx)
     # TODO: probably better to use inject_hooks. For now keep it this way
     class _IntermediateLayer(nn.Module):
         def __init__(self):
@@ -75,9 +76,11 @@ def get_intermediate_layer(model, submodule_path):
             self.registered = []
             self.model.get_submodule(submodule_path).register_forward_hook(self._register)
 
-        def _register(self, mod, inp, outp):
-            self.registered.append(_normalize_output(outp))
+        def _register(self, mod, inp, out_):
+            self.registered.append(_normalize_output(out_))
 
         def forward(self, *args, **kwargs):
             self.model(*args, **kwargs)
             return self._registered
+
+    return _IntermediateLayer
