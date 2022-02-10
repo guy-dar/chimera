@@ -74,7 +74,7 @@ def extract_intermediate_layer(model, submodule_path):
             super().__init__()
             self._model = deepcopy(model)
             self._registered = None
-            self.model.get_submodule(submodule_path).register_forward_hook(self._register)
+            self._model.get_submodule(submodule_path).register_forward_hook(self._register)
 
         def _register(self, mod, inp, out_):
             self._registered = _normalize_output(out_)
