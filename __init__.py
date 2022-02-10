@@ -19,7 +19,7 @@ def inject_hooks(model, intervene_fn, submodules=None, match_string=None, clone=
         assert isinstance(match_string, (str, list, tuple))
         if isinstance(match_string, str):
             match_string = [match_string]
-        patterns = ['.*'.join(map(re.escape, raw_pattern.split('*'))) + '$' for raw_pattern in match_string]
+        patterns = [r'[^\.]*'.join(map(re.escape, raw_pattern.split('*'))) + '$' for raw_pattern in match_string]
         submodules = [name for name, _ in model.named_modules()
                       if any(re.search(pattern, name) for pattern in patterns)]
 
