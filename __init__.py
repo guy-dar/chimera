@@ -77,7 +77,7 @@ def extract_intermediate_layer(model, submodule_path):
             self._model.get_submodule(submodule_path).register_forward_hook(self._register)
 
         def _register(self, mod, inp, out_):
-            self._registered = _normalize_output(out_)
+            self._registered = _normalize_output(mod, out_)
 
         def forward(self, *args, **kwargs):
             self._model(*args, **kwargs)
