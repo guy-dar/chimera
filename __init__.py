@@ -1,7 +1,7 @@
 import re
 from copy import deepcopy
 from functools import partial
-from typing import List
+from typing import List, Union
 
 import torch
 from torch import nn
@@ -97,7 +97,7 @@ def extract_intermediate_layer(model, submodule_path):
 
 
 def override_parameters(base_model: nn.Module, replacement_model: nn.Module, pass_idx: bool = True,
-                        match_string: List[str] | str | None = None, clone: bool = True, verbose: bool = False):
+                        match_string: Union[List[str], str, None] = None, clone: bool = True, verbose: bool = False):
     if isinstance(match_string, str):
         match_string = [match_string]
     patterns = [_match_string_to_regex(raw_pattern) for raw_pattern in match_string]
