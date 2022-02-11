@@ -121,3 +121,4 @@ def override_parameters(base_model: nn.Module, replacement_model: nn.Module, pas
         submodule.__dict__[param_base_name] = property(_replace_fn)
 
     _inject_new_params(base_model, replacement_model)
+    return base_model
