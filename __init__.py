@@ -111,7 +111,7 @@ def override_parameters(base_model: nn.Module, replacement_model: nn.Module, pas
         if verbose:
             print(f"injection to parameter {name}")
         old_param = base_model.get_parameter(name)
-        submodule_name, param_base_name = name.rsplit(name, 1)
+        submodule_name, param_base_name = name.rsplit('.', 1)
         submodule = base_model.get_submodule(submodule_name)
         submodule.register_parameter(f'_chimera_old_{param_base_name}', old_param)
         _replace_fn = partial(replacement_model.forward, old_param)
