@@ -118,7 +118,7 @@ def override_parameters(base_model: nn.Module, replacement_model: nn.Module, pas
         if pass_idx:
             _replace_fn = partial(_replace_fn, idx=idx)
         assert (param_base_name in submodule._parameters) and (submodule._parameters[param_base_name] is old_param)
-        base_model.register_parameter(name, None)
+        submodule.register_parameter(param_base_name, None)
         submodule.__dict__[param_base_name] = property(_replace_fn) # TODO: make work for integer params too
 
     _inject_new_params(base_model, replacement_model)
