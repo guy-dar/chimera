@@ -79,7 +79,7 @@ def combine_models(base_model: nn.Module, injected_model: nn.Module,
     return new_model
 
 
-def extract_intermediate_layer(model, submodule_path):
+def extract_intermediate_layer(model: nn.Module, submodule_path: str):
     # TODO: find better way (perhaps using torch fx)
     # TODO: probably better to use inject_hooks. For now keep it this way
     class _IntermediateLayer(nn.Module):
