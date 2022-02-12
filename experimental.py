@@ -50,7 +50,7 @@ def _experimental_override_parameters(base_model: nn.Module, replacement_model: 
         submodule_name, param_base_name = name.rsplit('.', 1)
         submodule = base_model.get_submodule(submodule_name)
         submodule.register_parameter(f'_chimera_old_{param_base_name}', old_param)
-        _replace_fn = partial(replacement_model.forward, old_param)
+        _replace_fn = lambda self, *args, **kwargs: replacement_model.forward(old_param, *args, **kwargs)
         if pass_idx:
             _replace_fn = partial(_replace_fn, idx=idx)
         assert (param_base_name in submodule._parameters) and (submodule._parameters[param_base_name] is old_param)
