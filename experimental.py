@@ -21,7 +21,6 @@ def _subclass_instance(instance: Any, new_attrs: dict):
         if attr in ['__weakref__', '__class__', *new_attrs.keys()]:
             continue
         new_instance.__dict__[attr] = instance.__dict__[attr]
-    #         setattr(new_instance, attr, getattr(instance, attr))
 
     Subclass.__init__ = call_super
 
@@ -33,7 +32,8 @@ def _subclass_instance(instance: Any, new_attrs: dict):
 
 def _experimental_override_parameters(base_model: nn.Module, replacement_model: nn.Module,
                                       match_string: Union[List[str], str], clone: bool = True,
-                                      pass_idx: bool = True, verbose: bool = False):
+                                      freeze_base: bool = False, freeze_injected: bool = False,
+                                      pass_idx: bool = True, pass_param_name: bool = False, verbose: bool = False):
 
     replaced_params = _filter_by_match(match_string, map(itemgetter(0), base_model.named_parameters()))
 
@@ -50,6 +50,8 @@ def _experimental_override_parameters(base_model: nn.Module, replacement_model: 
         _replace_fn = lambda self, *args, **kwargs: replacement_model.forward(old_param, *args, **kwargs)
         if pass_idx:
             _replace_fn = partial(_replace_fn, idx=idx)
+        if pass_param_name:
+            _replace_fn = partial(_replace_fn, param_name=name)
         assert (param_base_name in submodule._parameters) and (submodule._parameters[param_base_name] is old_param)
         submodule.register_parameter(param_base_name, None)
         # TODO: make it work for integer param_base_name & submodule_base_name
@@ -60,5 +62,5 @@ def _experimental_override_parameters(base_model: nn.Module, replacement_model: 
             parent_submodule_name, submodule_base_name = submodule_name.rsplit('.', 1)
             parent_submodule = base_model.get_submodule(parent_submodule_name)
             parent_submodule.__dict__[submodule_base_name] = new_submodule
-    _inject_new_params(base_model, replacement_model)
+    _inject_new_params(base_model, replacement_model, freeze_base=freeze_base, freeze_injected=freeze_injected)
     return base_model

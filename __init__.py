@@ -26,15 +26,19 @@ def _match_string_to_regex(match_string: Union[str, List[str]]):
     return r'[^\.]*'.join(map(re.escape, match_string.split('*'))) + '$'
 
 
-def _inject_new_params(new_model: nn.Module, injected_model: nn.Module):
+def _inject_new_params(base_model: nn.Module, injected_model: nn.Module, freeze_base: bool, freeze_injected: bool):
+    if freeze_base:
+        [param.requires_grad_(False) for param in base_model.parameters()]
+    if freeze_injected:
+        [param.requires_grad_(False) for param in injected_model.parameters()]
     for name, param in injected_model.named_parameters():
-        new_model.register_parameter(name=name, param=param)
+        base_model.register_parameter(name=name, param=param)
 
 
 def inject_hooks(model: nn.Module, intervene_fn: Callable, match_string: Union[str, List[str]],
                  clone: bool = True, clear_prev_hooks: bool = False, pass_idx: bool = False,
                  pass_submodule: bool = False, verbose: bool = False):
-    submodules = _filter_by_match(match_string, map(itemgetter(0), model.named_parameters()))
+    submodules = _filter_by_match(match_string, map(itemgetter(0), model.named_modules()))
 
     if clone:
         model = deepcopy(model)
@@ -65,17 +69,12 @@ def inject_hooks(model: nn.Module, intervene_fn: Callable, match_string: Union[s
                 first_arg += new_out  # we cannot use set, because it is non-differentiable
 
         my_hooks.append(model.get_submodule(submodule_path).register_forward_hook(_inner_fn))
-    if clone:
-        return model
+    return model
 
 
 def combine_models(base_model, injected_model, freeze_base=False, freeze_injected=False, **kwargs):
-    if freeze_base:
-        [param.requires_grad_(False) for param in base_model.parameters()]
-    if freeze_injected:
-        [param.requires_grad_(False) for param in injected_model.parameters()]
     new_model = inject_hooks(base_model, injected_model.forward, **kwargs)
-    _inject_new_params(new_model, injected_model)
+    _inject_new_params(new_model, injected_model, freeze_base=freeze_base, freeze_injected=freeze_injected)
     return new_model
 
 
