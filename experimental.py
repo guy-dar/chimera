@@ -1,6 +1,6 @@
+from operator import itemgetter
 from typing import Any, Union, List
-import re
-from . import _inject_new_params, _match_string_to_regex
+from . import _inject_new_params, _filter_by_match
 from torch import nn
 from functools import partial
 from copy import deepcopy
@@ -31,14 +31,11 @@ def _subclass_instance(instance: Any, new_attrs: dict):
     return new_instance
 
 
-def _experimental_override_parameters(base_model: nn.Module, replacement_model: nn.Module, pass_idx: bool = True,
-                                      match_string: Union[List[str], str, None] = None, clone: bool = True,
-                                      verbose: bool = False):
-    if isinstance(match_string, str):
-        match_string = [match_string]
-    patterns = [_match_string_to_regex(raw_pattern) for raw_pattern in match_string]
-    replaced_params = [name for name, _ in base_model.named_parameters()
-                       if any(re.search(pattern, name) for pattern in patterns)]
+def _experimental_override_parameters(base_model: nn.Module, replacement_model: nn.Module,
+                                      match_string: Union[List[str], str], clone: bool = True,
+                                      pass_idx: bool = True, verbose: bool = False):
+
+    replaced_params = _filter_by_match(match_string, map(itemgetter(0), base_model.named_parameters()))
 
     if clone:
         base_model = deepcopy(base_model)

@@ -1,33 +1,40 @@
 import re
 from copy import deepcopy
 from functools import partial
+from operator import itemgetter
+from typing import Union, List, Iterable, Any, Callable
 import torch
 from torch import nn
 
 
-def _normalize_output(mod, outp):
+def _filter_by_match(match_string: Union[str, List[str]], all_names: Iterable[str]):
+    assert isinstance(match_string, (str, list, tuple))
+    if isinstance(match_string, str):
+        match_string = [match_string]
+    patterns = [_match_string_to_regex(raw_pattern) for raw_pattern in match_string]
+    filtered_names = [name for name in all_names if any(re.search(pattern, name) for pattern in patterns)]
+    return filtered_names
+
+
+def _normalize_output(mod: nn.Module, outp: Any):
     if isinstance(mod, nn.Embedding):
         return outp,
     return outp
 
 
-def _match_string_to_regex(match_string):
+def _match_string_to_regex(match_string: Union[str, List[str]]):
     return r'[^\.]*'.join(map(re.escape, match_string.split('*'))) + '$'
 
 
-def _inject_new_params(new_model, injected_model):
+def _inject_new_params(new_model: nn.Module, injected_model: nn.Module):
     for name, param in injected_model.named_parameters():
         new_model.register_parameter(name=name, param=param)
 
 
-def inject_hooks(model, intervene_fn, match_string=None, clone=True,
-                 clear_prev_hooks=False, pass_idx=False, pass_submodule=False, verbose=False):
-    assert isinstance(match_string, (str, list, tuple))
-    if isinstance(match_string, str):
-        match_string = [match_string]
-    patterns = [_match_string_to_regex(raw_pattern) for raw_pattern in match_string]
-    submodules = [name for name, _ in model.named_modules()
-                  if any(re.search(pattern, name) for pattern in patterns)]
+def inject_hooks(model: nn.Module, intervene_fn: Callable, match_string: Union[str, List[str]],
+                 clone: bool = True, clear_prev_hooks: bool = False, pass_idx: bool = False,
+                 pass_submodule: bool = False, verbose: bool = False):
+    submodules = _filter_by_match(match_string, map(itemgetter(0), model.named_parameters()))
 
     if clone:
         model = deepcopy(model)
