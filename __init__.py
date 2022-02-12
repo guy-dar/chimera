@@ -72,7 +72,8 @@ def inject_hooks(model: nn.Module, intervene_fn: Callable, match_string: Union[s
     return model
 
 
-def combine_models(base_model, injected_model, freeze_base=False, freeze_injected=False, **kwargs):
+def combine_models(base_model: nn.Module, injected_model: nn.Module,
+                   freeze_base: bool = False, freeze_injected : bool = False, **kwargs):
     new_model = inject_hooks(base_model, injected_model.forward, **kwargs)
     _inject_new_params(new_model, injected_model, freeze_base=freeze_base, freeze_injected=freeze_injected)
     return new_model
