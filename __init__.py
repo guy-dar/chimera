@@ -1,8 +1,6 @@
 import re
 from copy import deepcopy
 from functools import partial
-from typing import List, Union
-
 import torch
 from torch import nn
 
@@ -22,16 +20,14 @@ def _inject_new_params(new_model, injected_model):
         new_model.register_parameter(name=name, param=param)
 
 
-def inject_hooks(model, intervene_fn, submodules=None, match_string=None, clone=True,
+def inject_hooks(model, intervene_fn, match_string=None, clone=True,
                  clear_prev_hooks=False, pass_idx=False, pass_submodule=False, verbose=False):
-    assert (submodules is None) ^ (match_string is None)
-    if submodules is None:
-        assert isinstance(match_string, (str, list, tuple))
-        if isinstance(match_string, str):
-            match_string = [match_string]
-        patterns = [_match_string_to_regex(raw_pattern) for raw_pattern in match_string]
-        submodules = [name for name, _ in model.named_modules()
-                      if any(re.search(pattern, name) for pattern in patterns)]
+    assert isinstance(match_string, (str, list, tuple))
+    if isinstance(match_string, str):
+        match_string = [match_string]
+    patterns = [_match_string_to_regex(raw_pattern) for raw_pattern in match_string]
+    submodules = [name for name, _ in model.named_modules()
+                  if any(re.search(pattern, name) for pattern in patterns)]
 
     if clone:
         model = deepcopy(model)
@@ -94,32 +90,3 @@ def extract_intermediate_layer(model, submodule_path):
             return self._registered
 
     return _IntermediateLayer()
-
-
-def override_parameters(base_model: nn.Module, replacement_model: nn.Module, pass_idx: bool = True,
-                        match_string: Union[List[str], str, None] = None, clone: bool = True, verbose: bool = False):
-    if isinstance(match_string, str):
-        match_string = [match_string]
-    patterns = [_match_string_to_regex(raw_pattern) for raw_pattern in match_string]
-    replaced_params = [name for name, _ in base_model.named_parameters()
-                       if any(re.search(pattern, name) for pattern in patterns)]
-
-    if clone:
-        base_model = deepcopy(base_model)
-
-    for idx, name in enumerate(replaced_params):
-        if verbose:
-            print(f"injection to parameter {name}")
-        old_param = base_model.get_parameter(name)
-        submodule_name, param_base_name = name.rsplit('.', 1)
-        submodule = base_model.get_submodule(submodule_name)
-        submodule.register_parameter(f'_chimera_old_{param_base_name}', old_param)
-        _replace_fn = partial(replacement_model.forward, old_param)
-        if pass_idx:
-            _replace_fn = partial(_replace_fn, idx=idx)
-        assert (param_base_name in submodule._parameters) and (submodule._parameters[param_base_name] is old_param)
-        submodule.register_parameter(param_base_name, None)
-        submodule.__dict__[param_base_name] = property(_replace_fn) # TODO: make work for integer params too
-
-    _inject_new_params(base_model, replacement_model)
-    return base_model
